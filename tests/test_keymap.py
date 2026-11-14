@@ -44,12 +44,12 @@ class KeymapTests(unittest.TestCase):
     def test_base_layout(self):
         expected = [
             "&kp F11", *[f"&kp {k}" for k in "QWERTYUIOP"], "&kp F12",
-            "&mt LSHFT SEMI", *[f"&kp {k}" for k in "ASDFGHJKL"],
-            "&mt LCTRL TAB", "&lt FN JP_COLON",
-            "&kp LANG1", *[f"&kp {k}" for k in "ZXCVBNM"],
-            "&kp COMMA", "&kp DOT", "&kp SLASH", "&kp LANG2",
+            "&mt LSHFT JP_COLON", *[f"&kp {k}" for k in "ASDFGHJKL"],
+            "&mt LCTRL TAB", "&lt FN JP_ZKHK",
+            "&kp LGUI", "&mt LSHFT Z", *[f"&kp {k}" for k in "XCVBNM"],
+            "&kp COMMA", "&kp DOT", "&kp SLASH", "&kp LALT",
             "&kp LALT", "&kp LGUI", "&lt NUM SPACE", "&lt ALT ESC",
-            "&bspc_del", "&lt NAV ENTER", "&kp JP_ZKHK", "&mo CONNECT",
+            "&bspc_del", "&lt NAV ENTER", "&kp LC(LA(DEL))", "&mo CONNECT",
         ]
         self.assertEqual(LAYERS["default_layer"], expected)
 
@@ -77,7 +77,12 @@ class KeymapTests(unittest.TestCase):
         self.assertNotIn("NUM_ALT", SOURCE)
 
     def test_no_removed_mod_taps(self):
-        self.assertNotRegex(SOURCE, r"&mt\s+\w+\s+(?:Z|SLASH|LANG1|LANG2)\b")
+        self.assertNotRegex(SOURCE, r"&mt\s+\w+\s+(?:SLASH|LANG1|LANG2)\b")
+
+    def test_z_hold_is_left_shift(self):
+        self.assertEqual(LAYERS["default_layer"][25], "&mt LSHFT Z")
+        for layer in ("layer_3", "connection_layer"):
+            self.assertEqual(LAYERS[layer][25], "&trans")
 
     def test_tapping_term(self):
         for behavior in ("mt", "lt"):
@@ -107,9 +112,27 @@ class KeymapTests(unittest.TestCase):
         for layer in ("layer_2", "layer_3", "layer_4", "connection_layer"):
             self.assertEqual(LAYERS[layer][40], "&trans")
 
-    def test_zenkaku_hankaku_next_to_connection_key(self):
+    def test_revised_outer_keys(self):
+        base = LAYERS["default_layer"]
+        self.assertEqual(base[12], "&mt LSHFT JP_COLON")
+        self.assertEqual(base[23], "&lt FN JP_ZKHK")
+        self.assertEqual(base[24], "&kp LGUI")
+        self.assertEqual(base[35], "&kp LALT")
+        self.assertNotRegex(SOURCE, r"\bLANG[12]\b")
+        for layer in ("layer_1", "layer_2", "layer_3", "layer_4",
+                      "connection_layer"):
+            for position in (12, 23, 24, 35):
+                expected = (
+                    "&bt BT_CLR"
+                    if layer == "connection_layer" and position == 35
+                    else "&trans"
+                )
+                self.assertEqual(LAYERS[layer][position], expected)
+
+    def test_ctrl_alt_delete_next_to_connection_key(self):
         self.assertEqual(
-            LAYERS["default_layer"][42:44], ["&kp JP_ZKHK", "&mo CONNECT"]
+            LAYERS["default_layer"][42:44],
+            ["&kp LC(LA(DEL))", "&mo CONNECT"],
         )
         for layer in ("layer_1", "layer_2", "layer_3", "layer_4",
                       "connection_layer"):
@@ -126,6 +149,19 @@ class KeymapTests(unittest.TestCase):
             self.assertIn("<&zip_xy_to_scroll_mapper>", scroller)
             self.assertIn("<&zip_scroll_scaler 1 16>", scroller)
             self.assertNotIn("process-next;", scroller)
+            scroll_transform = (
+                "<&zip_scroll_transform "
+                "(INPUT_TRANSFORM_X_INVERT | INPUT_TRANSFORM_Y_INVERT)>"
+            )
+            self.assertNotIn("zip_scroll_transform", base)
+            self.assertLess(
+                scroller.index("<&zip_xy_to_scroll_mapper>"),
+                scroller.index(scroll_transform),
+            )
+            self.assertLess(
+                scroller.index(scroll_transform),
+                scroller.index("<&zip_scroll_scaler 1 16>"),
+            )
             if listener == "glidepoint_split_listener":
                 self.assertIn("<&zip_xy_scaler 2 1>", base)
                 self.assertNotIn("zip_xy_scaler", scroller)
