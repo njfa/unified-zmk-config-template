@@ -8,14 +8,14 @@
 #include <dt-bindings/zmk/pointing.h>
 #include <dt-bindings/zmk/outputs.h>
 
-// Keep user-facing layer numbers stable; layer 6 overrides NAV with NUM.
+// Higher layer numbers take priority over lower active layers.
 #define BASE 0
 #define NUM 1
 #define NAV 2
-#define FN 3
-#define ALT 4
-#define CONNECT 5
-#define NUM_OVER_NAV 6
+#define NUM_OVER_NAV 3
+#define FN 4
+#define ALT 5
+#define CONNECT 6
 
 // Raw HID positions for Windows JIS, not the US legends in keys.h.
 #define JP_AT LBKT
@@ -66,6 +66,10 @@
     tapping-term-ms = <180>;
     // Space/Enter can activate their layers even immediately after a tap.
     quick-tap-ms = <0>;
+};
+
+&sk {
+    quick-release;
 };
 
 /{
@@ -163,7 +167,20 @@ keymap {
 
     };
 
-    layer_3 {
+    // Resolve NUM's transparent keys to BASE explicitly so NAV cannot leak
+    // through (e.g. '<'/'>' instead of ','/'.'). Momentary activation via &lt
+    // leaves NAV active underneath, restoring it when Space is released.
+    number_over_nav {
+        bindings = <
+            &kp F11   &kp LS(N1) &kp JP_AT &kp LS(N3) &kp LS(N4) &kp LS(N5)   &kp LS(JP_YEN) &kp LS(N6) &kp LS(JP_COLON) &kp LS(JP_AT) &kp LS(JP_CARET) &kp F12
+            &kp LANG1 &kp N1     &kp N2    &kp N3     &kp N4     &kp N5       &kp KP_PLUS    &kp LS(MINUS) &kp MINUS      &kp JP_CARET  &mt LCTRL TAB   &lt FN LANG2
+            &kp LGUI  &kp N6     &kp N7    &kp N8     &kp N9     &kp N0       &kp JP_BSLH    &kp LS(JP_BSLH) &kp COMMA     &kp DOT       &kp SLASH       &kp LALT
+            &kp LALT  &kp JP_ZKHK                   &lt NUM SPACE &lt ALT ESC &kp DEL        &lt NAV ENTER                                 &kp LC(LA(DEL)) &mo CONNECT
+        >;
+        sensor-bindings = <&ec_ms_l SCRL_LEFT SCRL_RIGHT &ec_ms_r SCRL_DOWN SCRL_UP>;
+    };
+
+    layer_4 {
         bindings = <
             &kp F11 &kp F1  &kp F2  &kp F3  &kp F4  &kp F5   &kp F6    &kp F7    &kp F8  &kp F9  &kp F10  &kp F12
             &trans  &trans  &trans  &trans  &trans  &trans   &trans    &trans    &trans  &trans  &trans   &trans
@@ -172,7 +189,7 @@ keymap {
         >;
     };
 
-    layer_4 {
+    layer_5 {
         bindings = <
             &trans  &kp LA(Q) &kp LA(W)  &kp LA(E)  &kp LA(R)  &kp LA(T)   &kp LA(Y)  &kp LA(U)  &kp LA(I)  &kp LA(O)  &kp LA(P) &trans
             &trans  &kp LA(A) &kp LA(S)  &kp LA(D)  &kp LA(F)  &kp LA(G)   &kp LA(H)  &kp LA(J)  &kp LA(K)  &kp LA(L)  &trans   &trans
@@ -190,17 +207,5 @@ keymap {
         >;
     };
 
-    // Resolve NUM's transparent keys to BASE explicitly so NAV cannot leak
-    // through (e.g. '<'/'>' instead of ','/'.'). Momentary activation via &lt
-    // leaves NAV active underneath, restoring it when Space is released.
-    number_over_nav {
-        bindings = <
-            &kp F11   &kp LS(N1) &kp JP_AT &kp LS(N3) &kp LS(N4) &kp LS(N5)   &kp LS(JP_YEN) &kp LS(N6) &kp LS(JP_COLON) &kp LS(JP_AT) &kp LS(JP_CARET) &kp F12
-            &kp LANG1 &kp N1     &kp N2    &kp N3     &kp N4     &kp N5       &kp KP_PLUS    &kp LS(MINUS) &kp MINUS      &kp JP_CARET  &mt LCTRL TAB   &lt FN LANG2
-            &kp LGUI  &kp N6     &kp N7    &kp N8     &kp N9     &kp N0       &kp JP_BSLH    &kp LS(JP_BSLH) &kp COMMA     &kp DOT       &kp SLASH       &kp LALT
-            &kp LALT  &kp JP_ZKHK                   &lt NUM SPACE &lt ALT ESC &kp DEL        &lt NAV ENTER                                 &kp LC(LA(DEL)) &mo CONNECT
-        >;
-        sensor-bindings = <&ec_ms_l SCRL_LEFT SCRL_RIGHT &ec_ms_r SCRL_DOWN SCRL_UP>;
-    };
 };
 };

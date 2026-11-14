@@ -24,8 +24,8 @@ class KeymapTests(unittest.TestCase):
     def test_layer_order_and_binding_counts(self):
         self.assertEqual(
             list(LAYERS),
-            ["default_layer"] + [f"layer_{n}" for n in range(1, 5)]
-            + ["connection_layer", "number_over_nav"],
+            ["default_layer", "layer_1", "layer_2", "number_over_nav",
+             "layer_4", "layer_5", "connection_layer"],
         )
         for name, bindings in LAYERS.items():
             with self.subTest(layer=name):
@@ -62,8 +62,8 @@ class KeymapTests(unittest.TestCase):
             self.assertRegex(SOURCE, rf"#define {alias} {code}\b")
 
     def test_layer_access(self):
-        for name, number in {"NUM": 1, "NAV": 2, "FN": 3,
-                             "ALT": 4, "CONNECT": 5}.items():
+        for name, number in {"NUM": 1, "NAV": 2, "NUM_OVER_NAV": 3,
+                             "FN": 4, "ALT": 5, "CONNECT": 6}.items():
             self.assertRegex(SOURCE, rf"#define {name} {number}\b")
         self.assertEqual(LAYERS["layer_1"][40], "&kp DEL")
         self.assertEqual(
@@ -71,14 +71,14 @@ class KeymapTests(unittest.TestCase):
             ["&kp LEFT", "&kp DOWN", "&kp UP", "&kp RIGHT"],
         )
         self.assertEqual(
-            LAYERS["layer_3"][1:11], [f"&kp F{n}" for n in range(1, 11)]
+            LAYERS["layer_4"][1:11], [f"&kp F{n}" for n in range(1, 11)]
         )
-        self.assertEqual(LAYERS["layer_4"][41], "&kp LA(ENTER)")
+        self.assertEqual(LAYERS["layer_5"][41], "&kp LA(ENTER)")
         self.assertNotIn("NUM_ALT", SOURCE)
 
     def test_alt_layer_top_letters(self):
         self.assertEqual(
-            LAYERS["layer_4"][1:11],
+            LAYERS["layer_5"][1:11],
             [f"&kp LA({key})" for key in "QWERTYUIOP"],
         )
 
@@ -87,7 +87,7 @@ class KeymapTests(unittest.TestCase):
 
     def test_z_hold_is_left_shift(self):
         self.assertEqual(LAYERS["default_layer"][25], "&mt LSHFT Z")
-        for layer in ("layer_3", "connection_layer"):
+        for layer in ("layer_4", "connection_layer"):
             self.assertEqual(LAYERS[layer][25], "&trans")
 
     def test_tapping_term(self):
@@ -97,6 +97,10 @@ class KeymapTests(unittest.TestCase):
                 rf'&{behavior}\s*\{{\s*flavor = "tap-preferred";'
                 r"\s*tapping-term-ms = <180>;",
             )
+
+    def test_one_shot_modifiers_release_on_next_key_press(self):
+        block = re.search(r"&sk\s*\{(.*?)\};", SOURCE, re.S)[1]
+        self.assertIn("quick-release;", block)
 
     def test_quick_tap_does_not_force_repeat(self):
         for behavior in ("mt", "lt"):
@@ -167,7 +171,7 @@ class KeymapTests(unittest.TestCase):
         self.assertEqual(LAYERS["default_layer"][40], "&bspc_del")
         # The number layer keeps its existing, unconditional Delete binding.
         self.assertEqual(LAYERS["layer_1"][40], "&kp DEL")
-        for layer in ("layer_2", "layer_3", "layer_4", "connection_layer"):
+        for layer in ("layer_2", "layer_4", "layer_5", "connection_layer"):
             self.assertEqual(LAYERS[layer][40], "&trans")
 
     def test_revised_outer_keys(self):
@@ -176,7 +180,7 @@ class KeymapTests(unittest.TestCase):
         self.assertEqual(base[23], "&lt FN LANG2")
         self.assertEqual(base[24], "&kp LGUI")
         self.assertEqual(base[35], "&kp LALT")
-        for layer in ("layer_1", "layer_2", "layer_3", "layer_4",
+        for layer in ("layer_1", "layer_2", "layer_4", "layer_5",
                       "connection_layer"):
             for position in (12, 23, 24, 35):
                 expected = (
@@ -188,14 +192,14 @@ class KeymapTests(unittest.TestCase):
 
     def test_function_layer_has_only_function_keys_and_transparency(self):
         self.assertEqual(
-            LAYERS["layer_3"][:12],
+            LAYERS["layer_4"][:12],
             ["&kp F11", *[f"&kp F{n}" for n in range(1, 11)], "&kp F12"],
         )
-        self.assertEqual(LAYERS["layer_3"][12:], ["&trans"] * 32)
+        self.assertEqual(LAYERS["layer_4"][12:], ["&trans"] * 32)
 
     def test_space_on_nav_uses_a_higher_momentary_number_layer(self):
         self.assertEqual(LAYERS["layer_2"][38], "&lt NUM_OVER_NAV SPACE")
-        self.assertRegex(SOURCE, r"#define NUM_OVER_NAV 6\b")
+        self.assertRegex(SOURCE, r"#define NUM_OVER_NAV 3\b")
         self.assertGreater(
             list(LAYERS).index("number_over_nav"),
             list(LAYERS).index("layer_2"),
@@ -214,13 +218,38 @@ class KeymapTests(unittest.TestCase):
             "&ec_ms_r SCRL_DOWN SCRL_UP>;", block
         )
 
+    def test_higher_layers_override_numbers_and_fall_back_after_release(self):
+        # Static lookup model of ZMK's highest-active-layer precedence.
+        # This does not emulate hold-tap timing or firmware press/release events.
+        def resolve(active, position):
+            names = list(LAYERS)
+            for number in sorted(active | {0}, reverse=True):
+                binding = LAYERS[names[number]][position]
+                if binding != "&trans":
+                    return binding
+            self.fail(f"No binding for position {position}")
+
+        active = {2, 3}
+        self.assertEqual(resolve(active, 14), "&kp N2")
+        self.assertEqual(resolve(active, 23), "&lt FN LANG2")
+        self.assertEqual(resolve(active, 39), "&lt ALT ESC")
+        self.assertEqual(resolve(active, 43), "&mo CONNECT")
+        self.assertEqual(resolve(active | {4}, 1), "&kp F1")
+        self.assertEqual(resolve(active | {4, 5}, 1), "&kp LA(Q)")
+        self.assertEqual(resolve(active | {4, 5, 6}, 7), "&bt BT_SEL 0")
+        # Once higher layers are off, the helper number layer is visible.
+        self.assertEqual(resolve(active, 1), "&kp LS(N1)")
+        # Releasing Space exposes NAV; releasing Enter too exposes BASE.
+        self.assertEqual(resolve({2}, 14), "&kp LS(JP_LBKT)")
+        self.assertEqual(resolve(set(), 14), "&kp S")
+
     def test_thumb_ime_and_security_keys(self):
         self.assertEqual(LAYERS["default_layer"][37], "&kp JP_ZKHK")
         self.assertEqual(
             LAYERS["default_layer"][42:44],
             ["&kp LC(LA(DEL))", "&mo CONNECT"],
         )
-        for layer in ("layer_1", "layer_2", "layer_3", "layer_4",
+        for layer in ("layer_1", "layer_2", "layer_4", "layer_5",
                       "connection_layer"):
             for position in (37, 42):
                 self.assertEqual(LAYERS[layer][position], "&trans")
@@ -239,7 +268,7 @@ class KeymapTests(unittest.TestCase):
                 rf"&{listener}\s*\{{(.*?\n\}};)", overlay, re.S
             )[1]
             base, scroller = block.split("scroller {", 1)
-            self.assertIn("layers = <1 2 6>;", scroller)
+            self.assertIn("layers = <1 2 3>;", scroller)
             self.assertIn("<&zip_xy_to_scroll_mapper>", scroller)
             self.assertIn("<&zip_scroll_scaler 1 12>", scroller)
             self.assertNotIn("process-next;", scroller)
