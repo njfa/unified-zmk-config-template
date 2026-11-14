@@ -4,11 +4,38 @@
 #include <behaviors.dtsi>
 #include <dt-bindings/zmk/bt.h>
 #include <dt-bindings/zmk/keys.h>
+#include <dt-bindings/zmk/modifiers.h>
 #include <dt-bindings/zmk/pointing.h>
 #include <dt-bindings/zmk/outputs.h>
 
+// Vial's unused layer 3 is omitted; connection management is the last layer.
+#define BASE 0
+#define NUM 1
+#define NAV 2
+#define FN 3
+#define ALT 4
+#define CONNECT 5
+
+// Raw HID positions for Windows JIS, not the US legends in keys.h.
+#define JP_AT LBKT
+#define JP_COLON SQT
+#define JP_CARET EQUAL
+#define JP_LBKT RBKT
+#define JP_RBKT NUHS
+#define JP_YEN INT_YEN
+#define JP_BSLH INT_RO
+#define JP_ZKHK GRAVE
+
 / {
 	behaviors {
+        bspc_del: backspace_delete {
+            compatible = "zmk,behavior-mod-morph";
+            #binding-cells = <0>;
+            bindings = <&kp BSPC>, <&kp DEL>;
+            mods = <(MOD_LSFT | MOD_RSFT)>;
+            keep-mods = <0>;
+        };
+
         ec_ms_l: ec_ms_h {
             compatible = "zmk,behavior-encoder-mouse-scroll";
             #sensor-binding-cells = <2>;
@@ -24,6 +51,20 @@
 &msc {
     time-to-max-speed-ms = <0>;   // 即座に最大速度（加速なし）
     acceleration-exponent = <0>;   // 加速なし
+};
+
+&mt {
+    flavor = "tap-preferred";
+    tapping-term-ms = <180>;
+    // A tap followed by a hold can activate Ctrl, rather than repeat Tab.
+    quick-tap-ms = <0>;
+};
+
+&lt {
+    flavor = "tap-preferred";
+    tapping-term-ms = <180>;
+    // Space/Enter can activate their layers even immediately after a tap.
+    quick-tap-ms = <0>;
 };
 
 /{
@@ -59,10 +100,10 @@ keymap {
 
     default_layer {
         bindings = <
-            &kp TAB    &kp Q   &kp W  &kp E  &kp R  &kp T      &kp Y  &kp U  &kp I      &kp O    &kp P     &kp BSPC
-            &kp LCTRL  &kp A   &kp S  &kp D  &kp F  &kp G      &kp H  &kp J  &kp K      &kp L    &kp SQT   &kp ENTER
-            &kp LSHFT  &kp Z   &kp X  &kp C  &kp V  &kp B      &kp N  &kp M  &kp COMMA  &kp DOT  &kp SLASH &kp LSHFT
-            &kp ESC    &kp LALT              &mo 2  &kp SPACE  &mo 1  &kp LA(GRAVE)              &mo 3     &kp LGUI
+            &kp F11         &kp Q  &kp W  &kp E  &kp R  &kp T     &kp Y     &kp U     &kp I      &kp O    &kp P          &kp F12
+            &mt LSHFT SEMI  &kp A  &kp S  &kp D  &kp F  &kp G     &kp H     &kp J     &kp K      &kp L    &mt LCTRL TAB  &lt FN JP_COLON
+            &kp LANG1       &kp Z  &kp X  &kp C  &kp V  &kp B     &kp N     &kp M     &kp COMMA  &kp DOT  &kp SLASH      &kp LANG2
+            &kp LALT        &kp LGUI  &lt NUM SPACE  &lt ALT ESC   &bspc_del &lt NAV ENTER                  &kp JP_ZKHK    &mo CONNECT
         >;
 		//&ec_ms_lとrは、上のビヘイビアで作ったもの。
         sensor-bindings = <&ec_ms_l SCRL_LEFT SCRL_RIGHT &ec_ms_r SCRL_DOWN SCRL_UP>;
@@ -70,19 +111,19 @@ keymap {
 	
     layer_1 {
         bindings = <
-            &kp GRAVE &kp N1  &kp N2  &kp N3  &kp N4  &kp N5       &kp N6    &kp N7   &kp N8   &kp N9    &kp N0 &kp DEL
-            &trans    &trans &trans &trans &trans &trans           &kp PG_UP &kp HOME &kp UP   &kp END   &trans &trans
-            &trans    &trans &trans &trans &trans &trans           &kp PG_DN &kp LEFT &kp DOWN &kp RIGHT &trans &trans
-            &trans    &trans               &trans &trans           &trans    &trans                      &trans &trans
+            &trans  &kp LS(N1)  &kp JP_AT  &kp LS(N3)  &kp LS(N4)  &kp LS(N5)   &kp LS(JP_YEN)  &kp LS(N6)  &kp LS(JP_COLON)  &kp LS(JP_AT)  &kp LS(JP_CARET)  &trans
+            &trans  &kp N1      &kp N2     &kp N3      &kp N4      &kp N5       &kp KP_PLUS     &kp LS(MINUS) &kp MINUS        &kp JP_CARET   &trans           &trans
+            &trans  &kp N6      &kp N7     &kp N8      &kp N9      &kp N0       &kp JP_BSLH     &kp LS(JP_BSLH) &trans          &trans         &trans           &trans
+            &trans  &trans                              &trans     &trans      &kp DEL         &trans                                         &trans           &trans
         >;
     };
 
     layer_2 {
         bindings = <
-            &trans &kp F1  &kp F2  &kp F3  &kp F4  &kp F5     &trans  &trans    &kp MINUS &kp EQUAL &trans     &trans
-            &trans &kp F6  &kp F7  &kp F8  &kp F9  &kp F10    &trans  &kp LBKT  &kp RBKT  &kp NUBS  &trans     &trans
-            &trans &kp F11 &kp F12 &kp F13 &kp F14 &kp F15    &trans  &kp SEMI  &kp SQT   &trans    &kp QMARK  &kp BSLH
-            &trans &trans                  &trans  &trans     &trans  &trans                        &trans     &trans
+            &trans  &kp LS(N1)   &kp JP_AT        &kp LS(N3)  &kp LS(N4)  &kp LS(N5)   &kp LS(JP_YEN)  &kp LS(N6)  &kp LS(JP_COLON)  &kp LS(JP_AT)  &kp LS(JP_CARET)  &trans
+            &trans  &kp JP_COLON &kp LS(JP_LBKT)  &kp JP_LBKT &kp LS(N8)  &kp LS(N2)   &kp LEFT        &kp DOWN    &kp UP            &kp RIGHT      &trans           &trans
+            &trans  &kp SEMI     &kp LS(JP_RBKT)  &kp JP_RBKT &kp LS(N7)  &kp LS(N9)   &kp HOME        &kp END     &kp LS(COMMA)     &kp LS(DOT)    &trans           &trans
+            &trans  &trans                                  &lt NUM SPACE &kp ESC    &trans          &trans                                          &trans           &trans
         >;
 		//レイヤー2のときだけ、左手のエンコーダを回すとボリュームの上下ができるようになっています。
 		sensor-bindings = <&inc_dec_kp C_VOL_DN C_VOL_UP &ec_ms_r SCRL_DOWN SCRL_UP>;
@@ -91,18 +132,29 @@ keymap {
 
     layer_3 {
         bindings = <
-            &trans &trans &trans &trans &trans &trans      &trans  &bt BT_SEL 0  &bt BT_SEL 1  &bt BT_SEL 2  &bt BT_SEL 3   &bt BT_SEL 4
-            &trans &trans &trans &trans &trans &trans      &trans  &trans        &trans        &trans        &trans         &trans
-            &trans &trans &trans &trans &trans &trans      &trans  &trans        &trans        &trans        &bt BT_CLR_ALL &bt BT_CLR
-            &trans &trans               &trans &trans      &trans  &out OUT_BLE                                    &trans         &trans
+            &trans  &kp F1  &kp F2  &kp F3  &kp F4  &kp F5   &kp F6    &kp F7    &kp F8  &kp F9  &kp F10  &trans
+            &trans  &trans  &trans  &trans  &trans  &trans   &mkp RCLK &mkp MCLK &trans  &trans  &trans   &trans
+            &trans  &trans  &trans  &trans  &trans  &trans   &mkp MB4  &mkp MB5  &trans  &trans  &trans   &trans
+            &trans  &trans                 &trans  &trans   &trans    &trans                    &trans   &trans
         >;
     };
-    scroll {
-        status = "reserved";
+
+    layer_4 {
+        bindings = <
+            &trans  &kp F11   &kp LA(W)  &kp LA(E)  &kp LA(R)  &kp LA(T)   &kp LA(Y)  &kp LA(U)  &kp LA(I)  &kp LA(O)  &kp F12  &trans
+            &trans  &kp LA(A) &kp LA(S)  &kp LA(D)  &kp LA(F)  &kp LA(G)   &kp LA(H)  &kp LA(J)  &kp LA(K)  &kp LA(L)  &trans   &trans
+            &trans  &kp LS(Z) &kp LA(X)  &kp LA(C)  &kp LA(V)  &kp LA(B)   &kp LA(N)  &kp LA(M)  &kp COMMA  &kp DOT    &trans   &trans
+            &trans  &trans                                   &trans     &trans      &trans     &kp LA(ENTER)                       &trans   &trans
+        >;
     };
 
-    extra2 {
-        status = "reserved";
+    connection_layer {
+        bindings = <
+            &trans &trans &trans &trans &trans &trans   &trans &bt BT_SEL 0 &bt BT_SEL 1 &bt BT_SEL 2 &bt BT_SEL 3   &bt BT_SEL 4
+            &trans &trans &trans &trans &trans &trans   &trans &trans       &trans       &trans       &trans         &trans
+            &trans &trans &trans &trans &trans &trans   &trans &trans       &trans       &trans       &bt BT_CLR_ALL &bt BT_CLR
+            &trans &trans               &trans &trans   &trans &out OUT_BLE                           &trans         &trans
+        >;
     };
 };
 };
