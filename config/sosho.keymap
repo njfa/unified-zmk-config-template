@@ -79,10 +79,10 @@
             layers = <BASE>;
         };
 
-		//右クリックのコンボ 18 H 20 K
+		//右クリックのコンボ 20 K 21 L
         combo_RCLK {
             timeout-ms = <50>;
-            key-positions = <18 20>;
+            key-positions = <20 21>;
             bindings = <&mkp RCLK>;
             layers = <BASE>;
         };
@@ -116,17 +116,10 @@
             layers = <BASE>;
         };
 
-        combo_LANG1 {
+        combo_ZKHK {
             timeout-ms = <30>;
-            key-positions = <14 15>;
-            bindings = <&kp LANG1>;
-            layers = <BASE>;
-        };
-
-        combo_LANG2 {
-            timeout-ms = <30>;
-            key-positions = <20 21>;
-            bindings = <&kp LANG2>;
+            key-positions = <16 19>;
+            bindings = <&kp JP_ZKHK>;
             layers = <BASE>;
         };
 

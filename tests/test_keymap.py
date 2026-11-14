@@ -108,7 +108,7 @@ class KeymapTests(unittest.TestCase):
         combos = {name: block for name, block in combos.items() if "&mkp " in block}
         expected = {
             "combo_LCLK": ("19 20", "LCLK", 50, "BASE"),
-            "combo_RCLK": ("18 20", "RCLK", 50, "BASE"),
+            "combo_RCLK": ("20 21", "RCLK", 50, "BASE"),
             "combo_MCLK": ("19 21", "MCLK", 90, "BASE"),
             "combo_BACK": ("19 20", "MB4", 50, "NUM NUM_OVER_NAV"),
             "combo_FORWARD": ("20 21", "MB5", 50, "NUM NUM_OVER_NAV"),
@@ -127,21 +127,17 @@ class KeymapTests(unittest.TestCase):
                               (19, "J"), (20, "K"), (21, "L")):
             self.assertEqual(LAYERS["default_layer"][position], f"&kp {key}")
 
-    def test_language_combos_use_sd_and_kl_with_30ms_timeout(self):
+    def test_fj_replaces_language_combos_with_zenkaku_hankaku(self):
         combos = dict(re.findall(r"(combo_\w+)\s*\{(.*?)\};", SOURCE, re.S))
-        self.assertEqual(len(combos), 8)
-        for name, positions, key in (
-            ("combo_LANG1", "14 15", "LANG1"),
-            ("combo_LANG2", "20 21", "LANG2"),
-        ):
-            with self.subTest(combo=name):
-                block = combos[name]
-                self.assertIn("timeout-ms = <30>;", block)
-                self.assertIn(f"key-positions = <{positions}>;", block)
-                self.assertIn(f"bindings = <&kp {key}>;", block)
-                self.assertIn("layers = <BASE>;", block)
-        for position, key in ((14, "S"), (15, "D"), (18, "H"),
-                              (20, "K"), (21, "L")):
+        self.assertEqual(len(combos), 7)
+        self.assertNotIn("combo_LANG1", combos)
+        self.assertNotIn("combo_LANG2", combos)
+        block = combos["combo_ZKHK"]
+        self.assertIn("timeout-ms = <30>;", block)
+        self.assertIn("key-positions = <16 19>;", block)
+        self.assertIn("bindings = <&kp JP_ZKHK>;", block)
+        self.assertIn("layers = <BASE>;", block)
+        for position, key in ((16, "F"), (19, "J")):
             self.assertEqual(LAYERS["default_layer"][position], f"&kp {key}")
         self.assertEqual(LAYERS["default_layer"][12], "&kp LANG1")
         self.assertEqual(LAYERS["default_layer"][23], "&lt FN LANG2")
