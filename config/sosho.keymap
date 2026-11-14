@@ -111,7 +111,7 @@
 
         combo_SHIFT {
             timeout-ms = <50>;
-            key-positions = <12 23>;
+            key-positions = <15 20>;
             bindings = <&sk LSHFT>;
             layers = <BASE>;
         };

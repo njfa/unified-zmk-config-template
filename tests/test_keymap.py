@@ -146,12 +146,14 @@ class KeymapTests(unittest.TestCase):
         self.assertEqual(LAYERS["default_layer"][12], "&kp LANG1")
         self.assertEqual(LAYERS["default_layer"][23], "&lt FN LANG2")
 
-    def test_outer_home_keys_are_one_shot_shift_on_base_layer(self):
+    def test_dk_is_one_shot_shift_on_base_layer(self):
         block = re.search(r"combo_SHIFT\s*\{(.*?)\};", SOURCE, re.S)[1]
-        self.assertIn("key-positions = <12 23>;", block)
+        self.assertIn("key-positions = <15 20>;", block)
         self.assertIn("bindings = <&sk LSHFT>;", block)
         self.assertIn("layers = <BASE>;", block)
         self.assertIn("timeout-ms = <50>;", block)
+        self.assertEqual(LAYERS["default_layer"][15], "&kp D")
+        self.assertEqual(LAYERS["default_layer"][20], "&kp K")
 
     def test_shift_backspace_is_unshifted_delete(self):
         block = re.search(
