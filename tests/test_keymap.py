@@ -25,7 +25,7 @@ class KeymapTests(unittest.TestCase):
         self.assertEqual(
             list(LAYERS),
             ["default_layer"] + [f"layer_{n}" for n in range(1, 5)]
-            + ["connection_layer"],
+            + ["connection_layer", "number_over_nav"],
         )
         for name, bindings in LAYERS.items():
             with self.subTest(layer=name):
@@ -76,6 +76,12 @@ class KeymapTests(unittest.TestCase):
         self.assertEqual(LAYERS["layer_4"][41], "&kp LA(ENTER)")
         self.assertNotIn("NUM_ALT", SOURCE)
 
+    def test_alt_layer_top_letters(self):
+        self.assertEqual(
+            LAYERS["layer_4"][1:11],
+            [f"&kp LA({key})" for key in "QWERTYUIOP"],
+        )
+
     def test_no_removed_mod_taps(self):
         self.assertNotRegex(SOURCE, r"&mt\s+\w+\s+(?:SLASH|LANG1|LANG2)\b")
 
@@ -102,10 +108,10 @@ class KeymapTests(unittest.TestCase):
         combos = {name: block for name, block in combos.items() if "&mkp " in block}
         expected = {
             "combo_LCLK": ("19 20", "LCLK", 50, "BASE"),
-            "combo_RCLK": ("20 21", "RCLK", 50, "BASE"),
+            "combo_RCLK": ("18 20", "RCLK", 50, "BASE"),
             "combo_MCLK": ("19 21", "MCLK", 90, "BASE"),
-            "combo_BACK": ("19 20", "MB4", 50, "NUM"),
-            "combo_FORWARD": ("20 21", "MB5", 50, "NUM"),
+            "combo_BACK": ("19 20", "MB4", 50, "NUM NUM_OVER_NAV"),
+            "combo_FORWARD": ("20 21", "MB5", 50, "NUM NUM_OVER_NAV"),
         }
         self.assertEqual(set(combos), set(expected))
         self.assertRegex(SOURCE, r"#define NUM 1\b")
@@ -121,11 +127,24 @@ class KeymapTests(unittest.TestCase):
                               (19, "J"), (20, "K"), (21, "L")):
             self.assertEqual(LAYERS["default_layer"][position], f"&kp {key}")
 
-    def test_language_combos_are_removed(self):
+    def test_language_combos_use_sd_and_kl_with_30ms_timeout(self):
         combos = dict(re.findall(r"(combo_\w+)\s*\{(.*?)\};", SOURCE, re.S))
-        self.assertEqual(len(combos), 6)
-        self.assertNotIn("combo_LANG1", combos)
-        self.assertNotIn("combo_LANG2", combos)
+        self.assertEqual(len(combos), 8)
+        for name, positions, key in (
+            ("combo_LANG1", "14 15", "LANG1"),
+            ("combo_LANG2", "20 21", "LANG2"),
+        ):
+            with self.subTest(combo=name):
+                block = combos[name]
+                self.assertIn("timeout-ms = <30>;", block)
+                self.assertIn(f"key-positions = <{positions}>;", block)
+                self.assertIn(f"bindings = <&kp {key}>;", block)
+                self.assertIn("layers = <BASE>;", block)
+        for position, key in ((14, "S"), (15, "D"), (18, "H"),
+                              (20, "K"), (21, "L")):
+            self.assertEqual(LAYERS["default_layer"][position], f"&kp {key}")
+        self.assertEqual(LAYERS["default_layer"][12], "&kp LANG1")
+        self.assertEqual(LAYERS["default_layer"][23], "&lt FN LANG2")
 
     def test_outer_home_keys_are_one_shot_shift_on_base_layer(self):
         block = re.search(r"combo_SHIFT\s*\{(.*?)\};", SOURCE, re.S)[1]
@@ -172,6 +191,27 @@ class KeymapTests(unittest.TestCase):
         )
         self.assertEqual(LAYERS["layer_3"][12:], ["&trans"] * 32)
 
+    def test_space_on_nav_uses_a_higher_momentary_number_layer(self):
+        self.assertEqual(LAYERS["layer_2"][38], "&lt NUM_OVER_NAV SPACE")
+        self.assertRegex(SOURCE, r"#define NUM_OVER_NAV 6\b")
+        self.assertGreater(
+            list(LAYERS).index("number_over_nav"),
+            list(LAYERS).index("layer_2"),
+        )
+        expected = [
+            base if number == "&trans" else number
+            for base, number in zip(LAYERS["default_layer"], LAYERS["layer_1"])
+        ]
+        self.assertEqual(LAYERS["number_over_nav"], expected)
+        self.assertNotIn("&trans", LAYERS["number_over_nav"])
+        # No permanent switch or toggle: &lt releases only its own layer.
+        self.assertNotRegex(SOURCE, r"&(?:to|tog)\s+(?:NAV|NUM_OVER_NAV)\b")
+        block = re.search(r"number_over_nav\s*\{(.*?)\};", SOURCE, re.S)[1]
+        self.assertIn(
+            "sensor-bindings = <&ec_ms_l SCRL_LEFT SCRL_RIGHT "
+            "&ec_ms_r SCRL_DOWN SCRL_UP>;", block
+        )
+
     def test_thumb_ime_and_security_keys(self):
         self.assertEqual(LAYERS["default_layer"][37], "&kp JP_ZKHK")
         self.assertEqual(
@@ -197,7 +237,7 @@ class KeymapTests(unittest.TestCase):
                 rf"&{listener}\s*\{{(.*?\n\}};)", overlay, re.S
             )[1]
             base, scroller = block.split("scroller {", 1)
-            self.assertIn("layers = <1 2>;", scroller)
+            self.assertIn("layers = <1 2 6>;", scroller)
             self.assertIn("<&zip_xy_to_scroll_mapper>", scroller)
             self.assertIn("<&zip_scroll_scaler 1 12>", scroller)
             self.assertNotIn("process-next;", scroller)
