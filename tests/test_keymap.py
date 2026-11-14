@@ -127,20 +127,24 @@ class KeymapTests(unittest.TestCase):
                               (19, "J"), (20, "K"), (21, "L")):
             self.assertEqual(LAYERS["default_layer"][position], f"&kp {key}")
 
-    def test_fj_replaces_language_combos_with_zenkaku_hankaku(self):
+    def test_fj_is_one_shot_ctrl_after_typing_idle(self):
         combos = dict(re.findall(r"(combo_\w+)\s*\{(.*?)\};", SOURCE, re.S))
         self.assertEqual(len(combos), 7)
         self.assertNotIn("combo_LANG1", combos)
         self.assertNotIn("combo_LANG2", combos)
-        block = combos["combo_ZKHK"]
+        self.assertNotIn("combo_ZKHK", combos)
+        block = combos["combo_CTRL"]
         self.assertIn("timeout-ms = <30>;", block)
+        self.assertIn("require-prior-idle-ms = <150>;", block)
         self.assertIn("key-positions = <16 19>;", block)
-        self.assertIn("bindings = <&kp JP_ZKHK>;", block)
+        self.assertIn("bindings = <&sk LCTRL>;", block)
         self.assertIn("layers = <BASE>;", block)
         for position, key in ((16, "F"), (19, "J")):
             self.assertEqual(LAYERS["default_layer"][position], f"&kp {key}")
         self.assertEqual(LAYERS["default_layer"][12], "&kp LANG1")
         self.assertEqual(LAYERS["default_layer"][23], "&lt FN LANG2")
+        self.assertEqual(LAYERS["default_layer"][22], "&mt LCTRL TAB")
+        self.assertEqual(LAYERS["default_layer"][37], "&kp JP_ZKHK")
 
     def test_dk_is_one_shot_shift_on_base_layer(self):
         block = re.search(r"combo_SHIFT\s*\{(.*?)\};", SOURCE, re.S)[1]
