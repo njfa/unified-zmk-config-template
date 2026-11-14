@@ -44,11 +44,11 @@ class KeymapTests(unittest.TestCase):
     def test_base_layout(self):
         expected = [
             "&kp F11", *[f"&kp {k}" for k in "QWERTYUIOP"], "&kp F12",
-            "&mt LSHFT JP_COLON", *[f"&kp {k}" for k in "ASDFGHJKL"],
-            "&mt LCTRL TAB", "&lt FN JP_ZKHK",
+            "&kp LANG1", *[f"&kp {k}" for k in "ASDFGHJKL"],
+            "&mt LCTRL TAB", "&lt FN LANG2",
             "&kp LGUI", "&mt LSHFT Z", *[f"&kp {k}" for k in "XCVBNM"],
             "&kp COMMA", "&kp DOT", "&kp SLASH", "&kp LALT",
-            "&kp LALT", "&kp LGUI", "&lt NUM SPACE", "&lt ALT ESC",
+            "&kp LALT", "&kp JP_ZKHK", "&lt NUM SPACE", "&lt ALT ESC",
             "&bspc_del", "&lt NAV ENTER", "&kp LC(LA(DEL))", "&mo CONNECT",
         ]
         self.assertEqual(LAYERS["default_layer"], expected)
@@ -97,6 +97,43 @@ class KeymapTests(unittest.TestCase):
             block = re.search(rf"&{behavior}\s*\{{(.*?)\}};", SOURCE, re.S)[1]
             self.assertIn("quick-tap-ms = <0>;", block)
 
+    def test_mouse_combos_use_the_requested_layers(self):
+        combos = dict(re.findall(r"(combo_\w+)\s*\{(.*?)\};", SOURCE, re.S))
+        combos = {name: block for name, block in combos.items() if "&mkp " in block}
+        expected = {
+            "combo_LCLK": ("19 20", "LCLK", 50, "BASE"),
+            "combo_RCLK": ("20 21", "RCLK", 50, "BASE"),
+            "combo_MCLK": ("19 21", "MCLK", 90, "BASE"),
+            "combo_BACK": ("19 20", "MB4", 50, "NUM"),
+            "combo_FORWARD": ("20 21", "MB5", 50, "NUM"),
+        }
+        self.assertEqual(set(combos), set(expected))
+        self.assertRegex(SOURCE, r"#define NUM 1\b")
+        self.assertEqual(LAYERS["default_layer"][38], "&lt NUM SPACE")
+        for name, (positions, button, timeout, layer) in expected.items():
+            with self.subTest(combo=name):
+                block = combos[name]
+                self.assertIn(f"key-positions = <{positions}>;", block)
+                self.assertIn(f"bindings = <&mkp {button}>;", block)
+                self.assertIn(f"layers = <{layer}>;", block)
+                self.assertIn(f"timeout-ms = <{timeout}>;", block)
+        for position, key in ((14, "S"), (15, "D"), (16, "F"),
+                              (19, "J"), (20, "K"), (21, "L")):
+            self.assertEqual(LAYERS["default_layer"][position], f"&kp {key}")
+
+    def test_language_combos_are_removed(self):
+        combos = dict(re.findall(r"(combo_\w+)\s*\{(.*?)\};", SOURCE, re.S))
+        self.assertEqual(len(combos), 6)
+        self.assertNotIn("combo_LANG1", combos)
+        self.assertNotIn("combo_LANG2", combos)
+
+    def test_outer_home_keys_are_one_shot_shift_on_base_layer(self):
+        block = re.search(r"combo_SHIFT\s*\{(.*?)\};", SOURCE, re.S)[1]
+        self.assertIn("key-positions = <12 23>;", block)
+        self.assertIn("bindings = <&sk LSHFT>;", block)
+        self.assertIn("layers = <BASE>;", block)
+        self.assertIn("timeout-ms = <50>;", block)
+
     def test_shift_backspace_is_unshifted_delete(self):
         block = re.search(
             r"bspc_del:\s*backspace_delete\s*\{(.*?)\};", SOURCE, re.S
@@ -114,11 +151,10 @@ class KeymapTests(unittest.TestCase):
 
     def test_revised_outer_keys(self):
         base = LAYERS["default_layer"]
-        self.assertEqual(base[12], "&mt LSHFT JP_COLON")
-        self.assertEqual(base[23], "&lt FN JP_ZKHK")
+        self.assertEqual(base[12], "&kp LANG1")
+        self.assertEqual(base[23], "&lt FN LANG2")
         self.assertEqual(base[24], "&kp LGUI")
         self.assertEqual(base[35], "&kp LALT")
-        self.assertNotRegex(SOURCE, r"\bLANG[12]\b")
         for layer in ("layer_1", "layer_2", "layer_3", "layer_4",
                       "connection_layer"):
             for position in (12, 23, 24, 35):
@@ -129,14 +165,30 @@ class KeymapTests(unittest.TestCase):
                 )
                 self.assertEqual(LAYERS[layer][position], expected)
 
-    def test_ctrl_alt_delete_next_to_connection_key(self):
+    def test_function_layer_has_only_function_keys_and_transparency(self):
+        self.assertEqual(
+            LAYERS["layer_3"][:12],
+            ["&kp F11", *[f"&kp F{n}" for n in range(1, 11)], "&kp F12"],
+        )
+        self.assertEqual(LAYERS["layer_3"][12:], ["&trans"] * 32)
+
+    def test_thumb_ime_and_security_keys(self):
+        self.assertEqual(LAYERS["default_layer"][37], "&kp JP_ZKHK")
         self.assertEqual(
             LAYERS["default_layer"][42:44],
             ["&kp LC(LA(DEL))", "&mo CONNECT"],
         )
         for layer in ("layer_1", "layer_2", "layer_3", "layer_4",
                       "connection_layer"):
-            self.assertEqual(LAYERS[layer][42], "&trans")
+            for position in (37, 42):
+                self.assertEqual(LAYERS[layer][position], "&trans")
+
+    def test_left_trackpad_tap_click_enabled(self):
+        overlay = (ROOT / "boards/shields/sosho/sosho_L_trackpad.overlay").read_text()
+        block = re.search(r"&glidepoint\s*\{(.*?)\};", overlay, re.S)[1]
+        self.assertIn('status = "okay";', block)
+        self.assertIn("primary-tap-enable;", block)
+        self.assertIn("invert-x;", block)
 
     def test_left_trackpad_and_right_trackball_processors(self):
         overlay = (ROOT / "boards/shields/sosho/sosho_R_trackball.overlay").read_text()
@@ -147,7 +199,7 @@ class KeymapTests(unittest.TestCase):
             base, scroller = block.split("scroller {", 1)
             self.assertIn("layers = <1 2>;", scroller)
             self.assertIn("<&zip_xy_to_scroll_mapper>", scroller)
-            self.assertIn("<&zip_scroll_scaler 1 16>", scroller)
+            self.assertIn("<&zip_scroll_scaler 1 12>", scroller)
             self.assertNotIn("process-next;", scroller)
             scroll_transform = (
                 "<&zip_scroll_transform "
@@ -160,7 +212,7 @@ class KeymapTests(unittest.TestCase):
             )
             self.assertLess(
                 scroller.index(scroll_transform),
-                scroller.index("<&zip_scroll_scaler 1 16>"),
+                scroller.index("<&zip_scroll_scaler 1 12>"),
             )
             if listener == "glidepoint_split_listener":
                 self.assertIn("<&zip_xy_scaler 2 1>", base)
