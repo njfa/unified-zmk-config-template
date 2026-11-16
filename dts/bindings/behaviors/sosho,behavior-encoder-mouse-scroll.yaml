@@ -1,0 +1,17 @@
+description: One-shot encoder scrolling with an independent scroll multiplier
+
+compatible: "sosho,behavior-encoder-mouse-scroll"
+
+properties:
+  "#sensor-binding-cells":
+    type: int
+    required: true
+    const: 2
+  scroll-multiplier:
+    type: int
+    default: 1
+    description: Scroll units sent per encoder trigger
+
+sensor-binding-cells:
+  - param1
+  - param2

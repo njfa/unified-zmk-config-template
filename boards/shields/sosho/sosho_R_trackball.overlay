@@ -32,7 +32,9 @@ https://zmk.dev/docs/keymaps/input-processors
 &trackball { status = "okay"; };
 &trackball_listener {
 	status = "okay";
-	input-processors = <&zip_xy_transform (INPUT_TRANSFORM_X_INVERT | INPUT_TRANSFORM_Y_INVERT)>;
+	input-processors =
+        <&zip_xy_transform (INPUT_TRANSFORM_X_INVERT | INPUT_TRANSFORM_Y_INVERT)>,
+        <&zip_xy_scaler 11 10>;
 
     // NUM/NAV/NUM_OVER_NAV. Overrides replace the base processor chain.
     scroller {

@@ -289,6 +289,8 @@ class KeymapTests(unittest.TestCase):
                 self.assertIn("<&zip_xy_scaler 2 1>", base)
                 self.assertNotIn("zip_xy_scaler", scroller)
             else:
+                self.assertIn("<&zip_xy_scaler 11 10>", base)
+                self.assertNotIn("zip_xy_scaler", scroller)
                 transform = (
                     "<&zip_xy_transform "
                     "(INPUT_TRANSFORM_X_INVERT | INPUT_TRANSFORM_Y_INVERT)>"
@@ -298,6 +300,26 @@ class KeymapTests(unittest.TestCase):
                     scroller.index(transform),
                     scroller.index("<&zip_xy_to_scroll_mapper>"),
                 )
+
+    def test_encoder_scroll_multiplier_does_not_change_volume_timing(self):
+        for name in ("ec_ms_h", "ec_ms_v"):
+            block = re.search(rf"{name}\s*\{{(.*?)\}};", SOURCE, re.S)[1]
+            self.assertIn('compatible = "sosho,behavior-encoder-mouse-scroll";', block)
+            self.assertIn("scroll-multiplier = <2>;", block)
+        sensors = (ROOT / "boards/shields/sosho/sosho.dtsi").read_text()
+        self.assertIn("triggers-per-rotation = <24>;", sensors)
+        self.assertIn(
+            "sensor-bindings = <&inc_dec_kp C_VOL_DN C_VOL_UP &ec_ms_r SCRL_DOWN SCRL_UP>;",
+            SOURCE,
+        )
+
+    def test_local_encoder_behavior_is_registered_without_boot_delay(self):
+        module = (ROOT / "zephyr/module.yml").read_text()
+        self.assertIn("cmake: cmake", module)
+        self.assertIn("dts_root: .", module)
+        cmake = (ROOT / "cmake/CMakeLists.txt").read_text()
+        self.assertIn("../src/behavior_encoder_mouse_scroll.c", cmake)
+        self.assertNotIn("boot_delay_hack", cmake)
 
 
 if __name__ == "__main__":
