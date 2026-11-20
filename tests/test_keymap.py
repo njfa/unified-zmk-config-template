@@ -87,6 +87,11 @@ class KeymapTests(unittest.TestCase):
 
     def test_z_hold_is_left_shift(self):
         self.assertEqual(LAYERS["default_layer"][25], "&mt LSHFT Z")
+        for layer, tap_key in (
+            ("layer_1", "N6"), ("layer_2", "SEMI"), ("number_over_nav", "N6"),
+        ):
+            with self.subTest(layer=layer):
+                self.assertEqual(LAYERS[layer][25], f"&mt LSHFT {tap_key}")
         for layer in ("layer_4", "connection_layer"):
             self.assertEqual(LAYERS[layer][25], "&trans")
 
@@ -150,11 +155,11 @@ class KeymapTests(unittest.TestCase):
         self.assertEqual(LAYERS["default_layer"][22], "&mt LCTRL TAB")
         self.assertEqual(LAYERS["default_layer"][37], "&kp JP_ZKHK")
 
-    def test_dk_is_one_shot_shift_on_base_layer(self):
+    def test_dk_is_one_shot_shift_on_base_num_and_nav(self):
         block = re.search(r"combo_SHIFT\s*\{(.*?)\};", SOURCE, re.S)[1]
         self.assertIn("key-positions = <15 20>;", block)
         self.assertIn("bindings = <&sk LSHFT>;", block)
-        self.assertIn("layers = <BASE>;", block)
+        self.assertIn("layers = <BASE NUM NAV NUM_OVER_NAV>;", block)
         self.assertIn("timeout-ms = <50>;", block)
         self.assertEqual(LAYERS["default_layer"][15], "&kp D")
         self.assertEqual(LAYERS["default_layer"][20], "&kp K")

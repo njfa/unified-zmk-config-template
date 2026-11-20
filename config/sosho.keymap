@@ -119,7 +119,7 @@
             timeout-ms = <50>;
             key-positions = <15 20>;
             bindings = <&sk LSHFT>;
-            layers = <BASE>;
+            layers = <BASE NUM NAV NUM_OVER_NAV>;
         };
 
         combo_CTRL {
@@ -152,7 +152,7 @@ keymap {
         bindings = <
             &trans  &kp LS(N1)  &kp JP_AT  &kp LS(N3)  &kp LS(N4)  &kp LS(N5)   &kp LS(JP_YEN)  &kp LS(N6)  &kp LS(JP_COLON)  &kp LS(JP_AT)  &kp LS(JP_CARET)  &trans
             &trans  &kp N1      &kp N2     &kp N3      &kp N4      &kp N5       &kp KP_PLUS     &kp LS(MINUS) &kp MINUS        &kp JP_CARET   &trans           &trans
-            &trans  &kp N6      &kp N7     &kp N8      &kp N9      &kp N0       &kp JP_BSLH     &kp LS(JP_BSLH) &trans          &trans         &trans           &trans
+            &trans  &mt LSHFT N6 &kp N7    &kp N8      &kp N9      &kp N0       &kp JP_BSLH     &kp LS(JP_BSLH) &trans          &trans         &trans           &trans
             &trans  &trans                              &trans     &trans      &kp DEL         &trans                                         &trans           &trans
         >;
     };
@@ -161,7 +161,7 @@ keymap {
         bindings = <
             &trans  &kp LS(N1)   &kp JP_AT        &kp LS(N3)  &kp LS(N4)  &kp LS(N5)   &kp LS(JP_YEN)  &kp LS(N6)  &kp LS(JP_COLON)  &kp LS(JP_AT)  &kp LS(JP_CARET)  &trans
             &trans  &kp JP_COLON &kp LS(JP_LBKT)  &kp JP_LBKT &kp LS(N8)  &kp LS(N2)   &kp LEFT        &kp DOWN    &kp UP            &kp RIGHT      &trans           &trans
-            &trans  &kp SEMI     &kp LS(JP_RBKT)  &kp JP_RBKT &kp LS(N7)  &kp LS(N9)   &kp HOME        &kp END     &kp LS(COMMA)     &kp LS(DOT)    &trans           &trans
+            &trans  &mt LSHFT SEMI &kp LS(JP_RBKT) &kp JP_RBKT &kp LS(N7) &kp LS(N9)   &kp HOME        &kp END     &kp LS(COMMA)     &kp LS(DOT)    &trans           &trans
             &trans  &trans                                  &lt NUM_OVER_NAV SPACE &kp ESC &trans     &trans                                          &trans           &trans
         >;
 		//レイヤー2のときだけ、左手のエンコーダを回すとボリュームの上下ができるようになっています。
@@ -176,7 +176,7 @@ keymap {
         bindings = <
             &kp F11   &kp LS(N1) &kp JP_AT &kp LS(N3) &kp LS(N4) &kp LS(N5)   &kp LS(JP_YEN) &kp LS(N6) &kp LS(JP_COLON) &kp LS(JP_AT) &kp LS(JP_CARET) &kp F12
             &kp LANG1 &kp N1     &kp N2    &kp N3     &kp N4     &kp N5       &kp KP_PLUS    &kp LS(MINUS) &kp MINUS      &kp JP_CARET  &mt LCTRL TAB   &lt FN LANG2
-            &kp LGUI  &kp N6     &kp N7    &kp N8     &kp N9     &kp N0       &kp JP_BSLH    &kp LS(JP_BSLH) &kp COMMA     &kp DOT       &kp SLASH       &kp LALT
+            &kp LGUI  &mt LSHFT N6 &kp N7  &kp N8     &kp N9     &kp N0       &kp JP_BSLH    &kp LS(JP_BSLH) &kp COMMA     &kp DOT       &kp SLASH       &kp LALT
             &kp LALT  &kp JP_ZKHK                   &lt NUM SPACE &lt ALT ESC &kp DEL        &lt NAV ENTER                                 &kp LC(LA(DEL)) &mo CONNECT
         >;
         sensor-bindings = <&ec_ms_l SCRL_LEFT SCRL_RIGHT &ec_ms_r SCRL_DOWN SCRL_UP>;
