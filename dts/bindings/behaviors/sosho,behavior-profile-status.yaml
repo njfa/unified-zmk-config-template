@@ -1,0 +1,3 @@
+description: Show the state of a Bluetooth profile without selecting it
+compatible: "sosho,behavior-profile-status"
+include: one_param.yaml

@@ -25,7 +25,8 @@ class KeymapTests(unittest.TestCase):
         self.assertEqual(
             list(LAYERS),
             ["default_layer", "layer_1", "layer_2", "number_over_nav",
-             "layer_4", "layer_5", "connection_layer"],
+             "layer_4", "layer_5", "connection_layer", "boot_arm_layer",
+             "maintenance_layer"],
         )
         for name, bindings in LAYERS.items():
             with self.subTest(layer=name):
@@ -36,7 +37,8 @@ class KeymapTests(unittest.TestCase):
                         len(args),
                         {"&kp": 1, "&mt": 2, "&lt": 2, "&mo": 1,
                          "&trans": 0, "&mkp": 1, "&bt": None, "&out": 1,
-                         "&bspc_del": 0}[behavior]
+                          "&bspc_del": 0, "&profile_key": 2, "&boot_hold": 2,
+                           "&conn_status": 0, "&none": 0}[behavior]
                         if behavior != "&bt"
                         else (2 if args[0] == "BT_SEL" else 1),
                     )
@@ -63,7 +65,8 @@ class KeymapTests(unittest.TestCase):
 
     def test_layer_access(self):
         for name, number in {"NUM": 1, "NAV": 2, "NUM_OVER_NAV": 3,
-                             "FN": 4, "ALT": 5, "CONNECT": 6}.items():
+                             "FN": 4, "ALT": 5, "CONNECT": 6,
+                             "BOOT_ARM": 7, "MAINTENANCE": 8}.items():
             self.assertRegex(SOURCE, rf"#define {name} {number}\b")
         self.assertEqual(LAYERS["layer_1"][40], "&kp DEL")
         self.assertEqual(
@@ -257,7 +260,59 @@ class KeymapTests(unittest.TestCase):
         for layer in ("layer_1", "layer_2", "layer_4", "layer_5",
                       "connection_layer"):
             for position in (37, 42):
-                self.assertEqual(LAYERS[layer][position], "&trans")
+                expected = ("&mo BOOT_ARM"
+                            if layer == "connection_layer" and position == 37 else "&trans")
+                self.assertEqual(LAYERS[layer][position], expected)
+
+    def test_connection_layer_profile_keys_select_on_tap_and_peek_on_hold(self):
+        connect = LAYERS["connection_layer"]
+        self.assertEqual(
+            connect[1:6], [f"&profile_key {n} {n}" for n in range(5)]
+        )
+        self.assertEqual(connect[7:12], [f"&bt BT_SEL {n}" for n in range(5)])
+        hold_tap = re.search(r"profile_key:\s*\w+\s*\{(.*?)\};", SOURCE, re.S)[1]
+        self.assertIn('flavor = "tap-preferred";', hold_tap)
+        self.assertIn("tapping-term-ms = <350>;", hold_tap)
+        self.assertIn("bindings = <&profile_status>, <&select_profile>;", hold_tap)
+        select = re.search(r"select_profile:\s*\w+\s*\{(.*?)\};", SOURCE, re.S)[1]
+        self.assertIn("bindings = <&macro_param_1to2>, <&bt BT_SEL 0>;", select)
+        self.assertEqual(connect[27], "&conn_status")
+
+    def test_bootloader_requires_a_hold_on_the_intended_half(self):
+        connect = LAYERS["connection_layer"]
+        self.assertEqual(connect[17:19], ["&trans"] * 2)
+        self.assertEqual(connect[37], "&mo BOOT_ARM")
+        self.assertEqual(connect[34:36], ["&bt BT_CLR_ALL", "&bt BT_CLR"])
+        self.assertIn("if-layers = <CONNECT BOOT_ARM>;", SOURCE)
+        self.assertIn("then-layer = <MAINTENANCE>;", SOURCE)
+        self.assertEqual(LAYERS["boot_arm_layer"], ["&trans"] * 44)
+        for layer, bindings in LAYERS.items():
+            if layer == "maintenance_layer":
+                self.assertEqual(
+                    bindings,
+                    ["&boot_hold 0 0" if i in (24, 35) else "&none" for i in range(44)],
+                )
+            else:
+                self.assertNotIn("&boot_hold 0 0", bindings)
+        boot = re.search(r"boot_hold:\s*\w+\s*\{(.*?)\};", SOURCE, re.S)[1]
+        self.assertIn('flavor = "tap-preferred";', boot)
+        self.assertIn("tapping-term-ms = <1000>;", boot)
+        self.assertIn("hold-trigger-on-release;", boot)
+        self.assertIn("hold-trigger-key-positions = <NO_PHYSICAL_KEY>;", boot)
+        self.assertRegex(SOURCE, r"(?m)^#define NO_PHYSICAL_KEY 44$")
+        self.assertIn("bindings = <&bootloader>, <&none>;", boot)
+        self.assertNotRegex(SOURCE.split("keymap {", 1)[0], r"bindings = <&boot_hold\b")
+
+    def test_right_status_indicator_does_not_share_led_with_widget(self):
+        build = (ROOT / "build.yaml").read_text()
+        shields = ROOT / "boards/shields/sosho"
+        for variant in ("trackpad", "trackball"):
+            with self.subTest(variant=variant):
+                self.assertRegex(build, rf"(?m)^\s+shield: sosho_R_{variant}$")
+                self.assertIn(f"shield: sosho_L_{variant} rgbled_adapter", build)
+                right = (shields / f"sosho_R_{variant}.conf").read_text()
+                self.assertIn("CONFIG_LED=y", right)
+                self.assertIn("CONFIG_RGBLED_WIDGET=n", right)
 
     def test_left_trackpad_tap_click_enabled(self):
         overlay = (ROOT / "boards/shields/sosho/sosho_L_trackpad.overlay").read_text()

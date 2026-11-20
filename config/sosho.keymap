@@ -16,6 +16,11 @@
 #define FN 4
 #define ALT 5
 #define CONNECT 6
+#define BOOT_ARM 7
+#define MAINTENANCE 8
+
+// Position events for the 44 physical keys use 0–43.
+#define NO_PHYSICAL_KEY 44
 
 // Raw HID positions for Windows JIS, not the US legends in keys.h.
 #define JP_AT LBKT
@@ -37,6 +42,37 @@
             keep-mods = <0>;
         };
 
+        profile_status: profile_status {
+            compatible = "sosho,behavior-profile-status";
+            #binding-cells = <1>;
+            display-name = "Inspect Bluetooth Profile";
+        };
+
+        conn_status: conn_status {
+            compatible = "sosho,behavior-connection-status";
+            #binding-cells = <0>;
+            display-name = "Show Current Connection";
+        };
+
+        profile_key: profile_key {
+            compatible = "zmk,behavior-hold-tap";
+            #binding-cells = <2>;
+            tapping-term-ms = <350>;
+            flavor = "tap-preferred";
+            bindings = <&profile_status>, <&select_profile>;
+        };
+
+        boot_hold: boot_hold {
+            compatible = "zmk,behavior-hold-tap";
+            #binding-cells = <2>;
+            tapping-term-ms = <1000>;
+            flavor = "tap-preferred";
+            // Any physical key release before the timeout cancels the hold.
+            hold-trigger-on-release;
+            hold-trigger-key-positions = <NO_PHYSICAL_KEY>;
+            bindings = <&bootloader>, <&none>;
+        };
+
         ec_ms_l: ec_ms_h {
             compatible = "sosho,behavior-encoder-mouse-scroll";
             #sensor-binding-cells = <2>;
@@ -46,6 +82,14 @@
             compatible = "sosho,behavior-encoder-mouse-scroll";
             #sensor-binding-cells = <2>;
             scroll-multiplier = <2>;
+        };
+    };
+
+    macros {
+        select_profile: select_profile {
+            compatible = "zmk,behavior-macro-one-param";
+            #binding-cells = <1>;
+            bindings = <&macro_param_1to2>, <&bt BT_SEL 0>;
         };
     };
 };
@@ -134,6 +178,16 @@
 };
 
 /{
+    conditional_layers {
+        compatible = "zmk,conditional-layers";
+        arm_maintenance {
+            if-layers = <CONNECT BOOT_ARM>;
+            then-layer = <MAINTENANCE>;
+        };
+    };
+};
+
+/{
 keymap {
     compatible = "zmk,keymap";
 
@@ -202,10 +256,28 @@ keymap {
 
     connection_layer {
         bindings = <
-            &trans &trans &trans &trans &trans &trans   &trans &bt BT_SEL 0 &bt BT_SEL 1 &bt BT_SEL 2 &bt BT_SEL 3   &bt BT_SEL 4
-            &trans &trans &trans &trans &trans &trans   &trans &trans       &trans       &trans       &trans         &trans
-            &trans &trans &trans &trans &trans &trans   &trans &trans       &trans       &trans       &bt BT_CLR_ALL &bt BT_CLR
-            &trans &trans               &trans &trans   &trans &out OUT_BLE                           &trans         &trans
+            &trans &profile_key 0 0 &profile_key 1 1 &profile_key 2 2 &profile_key 3 3 &profile_key 4 4   &trans         &bt BT_SEL 0 &bt BT_SEL 1 &bt BT_SEL 2 &bt BT_SEL 3   &bt BT_SEL 4
+            &trans &trans           &trans           &trans           &trans           &trans             &trans         &trans       &trans       &trans       &trans         &trans
+            &trans &trans           &trans           &conn_status     &trans           &trans             &trans         &trans       &trans       &trans       &bt BT_CLR_ALL &bt BT_CLR
+            &trans &mo BOOT_ARM         &trans &trans   &trans &out OUT_BLE                           &trans         &trans
+        >;
+    };
+
+    boot_arm_layer {
+        bindings = <
+            &trans &trans &trans &trans &trans &trans   &trans &trans &trans &trans &trans &trans
+            &trans &trans &trans &trans &trans &trans   &trans &trans &trans &trans &trans &trans
+            &trans &trans &trans &trans &trans &trans   &trans &trans &trans &trans &trans &trans
+            &trans &trans        &trans &trans &trans   &trans               &trans        &trans
+        >;
+    };
+
+    maintenance_layer {
+        bindings = <
+            &none          &none &none &none &none &none   &none &none &none &none &none &none
+            &none          &none &none &none &none &none   &none &none &none &none &none &none
+            &boot_hold 0 0 &none &none &none &none &none   &none &none &none &none &none &boot_hold 0 0
+            &none          &none       &none &none &none   &none             &none       &none
         >;
     };
 

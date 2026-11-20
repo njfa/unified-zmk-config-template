@@ -1,0 +1,3 @@
+description: Show the active host connection on the central keyboard half
+compatible: "sosho,behavior-connection-status"
+include: zero_param.yaml
